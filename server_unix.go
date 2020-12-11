@@ -1,9 +1,8 @@
+// +build darwin netbsd freebsd openbsd dragonfly linux
+
 package glev
 
 import (
-	"glev/internal"
-	"glev/util"
-	"io"
 	"net"
 	"os"
 	"runtime"
@@ -11,6 +10,9 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/hl4080/glev/internal"
+	"github.com/hl4080/glev/util"
 )
 
 type conn struct {
@@ -197,7 +199,7 @@ func loopRead(s *server, l *loop, c *conn) error {
 		}
 	}
 	if len(c.out) != 0 || c.action == None {
-		l.poll.AddReadWrite(c.fd)
+		l.poll.Mod2ReadWrite(c.fd)
 	}
 	return nil
 }
@@ -208,8 +210,6 @@ func loopAction(s *server, l *loop, c *conn) error {
 		return loopCloseConn(s, l, c, nil)
 	case Shutdown:
 		return errCloseServer
-	case Detach:
-		return loopDetachConn(s, l, c, nil)
 	default:
 		c.action = None
 	}
@@ -244,24 +244,6 @@ func loopWrite(s *server, l *loop, c *conn) error {
 		l.poll.DelWrite(c.fd)
 	}
 	return nil
-}
-
-func loopDetachConn(s *server, l *loop, c *conn, err error) error {
-	if s.eventHandler.OnDetached == nil {
-		s.eventHandler.OnClosed(c, err)
-	}
-	l.poll.DelReadWrite(c.fd)
-	atomic.AddInt32(&l.count, -1)
-	delete(l.fdconns, c.fd)
-	if err := syscall.SetNonblock(c.fd, false); err != nil {
-		return err
-	}
-	switch s.eventHandler.OnDetached(c, &detachedConn{c.fd}) {
-	case None:
-	case Shutdown:
-		return errCloseServer
-	}
-	return err
 }
 
 func loopCloseConn(s *server, l *loop, c *conn, err error) error {
@@ -412,7 +394,7 @@ func loopWake(s *server, l *loop, c *conn) error {
 		c.out = append([]byte{}, out...)
 	}
 	if len(c.out) != 0 && c.action != None {
-		l.poll.AddReadWrite(c.fd)
+		l.poll.Mod2ReadWrite(c.fd)
 	}
 	return nil
 }
@@ -424,45 +406,6 @@ func loopTicker(s *server, l *loop) {
 		}
 		time.Sleep(<-s.tch)
 	}
-}
-
-type detachedConn struct {
-	fd int
-}
-
-func (dc *detachedConn) Read(p []byte) (int, error) {
-	n, err := syscall.Read(dc.fd, p)
-	if err != nil {
-		return n, err
-	}
-	if n == 0 {
-		if len(p) == 0 {
-			return 0, nil
-		}
-		return 0, io.EOF
-	}
-	return n, nil
-}
-
-func (dc *detachedConn) Write(p []byte) (int, error) {
-	n := len(p)
-	for len(p) > 0 {
-		nn, err := syscall.Write(dc.fd, p)
-		if err != nil {
-			return n, err
-		}
-		p = p[nn:]
-	}
-	return n, nil
-}
-
-func (dc *detachedConn) Close() error {
-	err := syscall.Close(dc.fd)
-	if err != nil {
-		return err
-	}
-	dc.fd = -1
-	return nil
 }
 
 func (ln *listener) close() {

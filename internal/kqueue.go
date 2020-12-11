@@ -1,8 +1,11 @@
+// +build darwin netbsd freebsd openbsd dragonfly
+
 package internal
 
 import (
-	"glev/internal/log"
 	"syscall"
+
+	"github.com/hl4080/glev/internal/log"
 )
 
 type Poll struct {
@@ -87,6 +90,20 @@ func (p *Poll) AddReadWrite(fd int) {
 		Filter: syscall.EVFILT_WRITE,
 		Flags:  syscall.EV_ADD,
 	})
+}
+
+func (p *Poll) Mod2ReadWrite(fd int) {
+    p.changes = append(p.changes, syscall.Kevent_t{
+    	Ident:  uint64(fd),
+    	Filter: syscall.EVFILT_READ,
+    	Flags:  syscall.EV_ADD,
+    })
+    p.changes = append(p.changes, syscall.Kevent_t{
+    	Ident:  uint64(fd),
+    	Filter: syscall.EVFILT_WRITE,
+    	Flags:  syscall.EV_ADD,
+    })
+
 }
 
 func (p *Poll) DelWrite(fd int) {

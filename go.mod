@@ -1,4 +1,4 @@
-module glev
+module github/hl4080/glev
 
 go 1.13
 
