@@ -1,13 +1,12 @@
-
-
 package main
 
 import (
 	"flag"
 	"fmt"
-	"glev"
-	"log"
 	"strings"
+
+	"github.com/hl4080/glev"
+	"github.com/hl4080/glev/internal/log"
 )
 
 func main() {
@@ -29,18 +28,18 @@ func main() {
 	var events glev.EventHandler
 	events.NumLoops = loops
 	events.OnServing = func(srv glev.Server) (action glev.Action) {
-		log.Printf("echo server started on port %d (loops: %d)", port, srv.NumLoops)
+		log.Logger.Printf("echo server started on port %d (loops: %d)", port, srv.NumLoops)
 		if reuseport {
-			log.Printf("reuseport")
+			log.Logger.Printf("reuseport")
 		}
 		if stdlib {
-			log.Printf("stdlib")
+			log.Logger.Printf("stdlib")
 		}
 		return
 	}
 	events.Reactor = func(c glev.Conn, in []byte) (out []byte, action glev.Action) {
 		if trace {
-			log.Printf("%s", strings.TrimSpace(string(in)))
+			log.Logger.Printf("%s", strings.TrimSpace(string(in)))
 		}
 		out = in
 		return
@@ -52,5 +51,5 @@ func main() {
 	if stdlib {
 		scheme += "-net"
 	}
-	log.Fatal(glev.Serve(events, fmt.Sprintf("%s://:%d?reuseport=%t", scheme, port, reuseport)))
+	log.Logger.Fatal(glev.Serve(events, fmt.Sprintf("%s://:%d?reuseport=%t", scheme, port, reuseport)))
 }
