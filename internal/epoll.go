@@ -5,6 +5,8 @@ package internal
 import (
 	"syscall"
 	"unsafe"
+
+	"github.com/hl4080/glev/internal/log"
 )
 
 type Poll struct {

@@ -2,7 +2,6 @@ package glev
 
 import (
 	"errors"
-	"io"
 	"net"
 	"os"
 	"strings"
@@ -93,14 +92,6 @@ type EventHandler struct {
 	//OnClosed fired when a connection has closed
 	//parameter of err indicates the connection error for closing
 	OnClosed 	func(conn Conn, err error) (action Action)
-	// Detached fires when a connection has been previously detached.
-	// Once detached it's up to the receiver of this event to manage the
-	// state of the connection. The Closed event will not be called for
-	// this connection.
-	// The conn parameter is a ReadWriteCloser that represents the
-	// underlying socket connection. It can be freely used in goroutines
-	// and should be closed when it's no longer needed.
-	OnDetached func(c Conn, rwc io.ReadWriteCloser) (action Action)
 	//PreWrite fires before any data is written to client socket
 	//usually used to put some prepositive operations and logging information before writting
 	PreWrite	func()
